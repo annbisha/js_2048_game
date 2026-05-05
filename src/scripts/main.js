@@ -1,9 +1,14 @@
+"use strict";
+
 class Game {
   constructor(initialState = null) {
     this.size = 4;
     this.score = 0;
-    this.status = 'idle';
-    this.board = initialState || this.createEmptyBoard();
+    this.status = "idle";
+
+    this.board = initialState
+      ? initialState.map((row) => [...row])
+      : this.createEmptyBoard();
   }
 
   createEmptyBoard() {
@@ -25,7 +30,8 @@ class Game {
   start() {
     this.board = this.createEmptyBoard();
     this.score = 0;
-    this.status = 'playing';
+    this.status = "playing";
+
     this.addRandomTile();
     this.addRandomTile();
   }
@@ -37,10 +43,10 @@ class Game {
   addRandomTile() {
     const empty = [];
 
-    this.board.forEach((row, i) => {
-      row.forEach((cell, j) => {
+    this.board.forEach((row, r) => {
+      row.forEach((cell, c) => {
         if (cell === 0) {
-          empty.push([i, j]);
+          empty.push([r, c]);
         }
       });
     });
@@ -49,9 +55,10 @@ class Game {
       return;
     }
 
-    const [i, j] = empty[Math.floor(Math.random() * empty.length)];
+    const [randomRow, randomCol] =
+      empty[Math.floor(Math.random() * empty.length)];
 
-    this.board[i][j] = Math.random() < 0.9 ? 2 : 4;
+    this.board[randomRow][randomCol] = Math.random() < 0.9 ? 2 : 4;
   }
 
   processRow(row) {
@@ -88,8 +95,9 @@ class Game {
   moveRight() {
     const old = JSON.stringify(this.board);
 
-    this.board = this.board.map((row) =>
-      this.processRow([...row].reverse()).reverse());
+    this.board = this.board.map((row) => {
+      return this.processRow([...row].reverse()).reverse();
+    });
 
     if (JSON.stringify(this.board) !== old) {
       this.addRandomTile();
@@ -98,47 +106,63 @@ class Game {
   }
 
   moveUp() {
+    const old = JSON.stringify(this.board);
+
     this.transpose();
-    this.moveLeft();
+    this.board = this.board.map((row) => this.processRow(row));
     this.transpose();
+
+    if (JSON.stringify(this.board) !== old) {
+      this.addRandomTile();
+      this.checkGameState();
+    }
   }
 
   moveDown() {
+    const old = JSON.stringify(this.board);
+
     this.transpose();
-    this.moveRight();
+
+    this.board = this.board.map((row) => {
+      return this.processRow([...row].reverse()).reverse();
+    });
+
     this.transpose();
+
+    if (JSON.stringify(this.board) !== old) {
+      this.addRandomTile();
+      this.checkGameState();
+    }
   }
 
   transpose() {
-    this.board = this.board[0].map((_, i) => this.board.map((row) => row[i]));
+    this.board = this.board[0].map((_, col) => {
+      return this.board.map((row) => row[col]);
+    });
   }
 
   checkGameState() {
     if (this.board.flat().includes(2048)) {
-      this.status = 'win';
+      this.status = "win";
 
       return;
     }
 
-    if (this.canMove()) {
-      this.status = 'playing';
-    } else {
-      this.status = 'lose';
-    }
+    this.status = this.canMove() ? "playing" : "lose";
   }
 
   canMove() {
-    for (let i = 0; i < this.size; i++) {
-      for (let j = 0; j < this.size; j++) {
-        if (this.board[i][j] === 0) {
+    for (let row = 0; row < this.size; row++) {
+      for (let col = 0; col < this.size; col++) {
+        if (this.board[row][col] === 0) {
           return true;
         }
 
-        if (j < 3 && this.board[i][j] === this.board[i][j + 1]) {
+        if (col < 3 && this.board[row][col] === this.board[row][col + 1]) {
           return true;
         }
 
-        if (i < 3 && this.board[i][j] === this.board[i + 1][j]) {
+        if (row < 3 && this.board[row][col] === this.board[row + 1][col]) {
           return true;
         }
       }
@@ -152,22 +176,22 @@ class Game {
 
 const game = new Game();
 
-const cells = Array.from(document.querySelectorAll('.field-cell'));
-const scoreEl = document.querySelector('.game-score');
-const button = document.querySelector('.button');
+const cells = Array.from(document.querySelectorAll(".field-cell"));
+const scoreEl = document.querySelector(".game-score");
+const button = document.querySelector(".button");
 
-const messageStart = document.querySelector('.message-start');
-const messageWin = document.querySelector('.message-win');
-const messageLose = document.querySelector('.message-lose');
+const messageStart = document.querySelector(".message-start");
+const messageWin = document.querySelector(".message-win");
+const messageLose = document.querySelector(".message-lose");
 
 function render() {
   const state = game.getState().flat();
 
-  cells.forEach((cell, i) => {
-    const value = state[i];
+  cells.forEach((cell, index) => {
+    const value = state[index];
 
-    cell.textContent = value || '';
-    cell.className = 'field-cell';
+    cell.textContent = value || "";
+    cell.className = "field-cell";
 
     if (value) {
       cell.classList.add(`field-cell--${value}`);
@@ -176,25 +200,25 @@ function render() {
 
   scoreEl.textContent = game.getScore();
 
-  messageWin.classList.add('hidden');
-  messageLose.classList.add('hidden');
+  messageWin.classList.add("hidden");
+  messageLose.classList.add("hidden");
 
-  if (game.getStatus() === 'win') {
-    messageWin.classList.remove('hidden');
+  if (game.getStatus() === "win") {
+    messageWin.classList.remove("hidden");
   }
 
-  if (game.getStatus() === 'lose') {
-    messageLose.classList.remove('hidden');
+  if (game.getStatus() === "lose") {
+    messageLose.classList.remove("hidden");
   }
 }
 
-button.addEventListener('click', () => {
-  if (button.classList.contains('start')) {
+button.addEventListener("click", () => {
+  if (button.classList.contains("start")) {
     game.start();
-    button.classList.remove('start');
-    button.classList.add('restart');
-    button.textContent = 'Restart';
-    messageStart.classList.add('hidden');
+    button.classList.remove("start");
+    button.classList.add("restart");
+    button.textContent = "Restart";
+    messageStart.classList.add("hidden");
   } else {
     game.restart();
   }
@@ -202,24 +226,24 @@ button.addEventListener('click', () => {
   render();
 });
 
-document.addEventListener('keydown', (e) => {
-  if (game.getStatus() !== 'playing') {
+document.addEventListener("keydown", (e) => {
+  if (game.getStatus() !== "playing") {
     return;
   }
 
-  if (e.key === 'ArrowLeft') {
+  if (e.key === "ArrowLeft") {
     game.moveLeft();
   }
 
-  if (e.key === 'ArrowRight') {
+  if (e.key === "ArrowRight") {
     game.moveRight();
   }
 
-  if (e.key === 'ArrowUp') {
+  if (e.key === "ArrowUp") {
     game.moveUp();
   }
 
-  if (e.key === 'ArrowDown') {
+  if (e.key === "ArrowDown") {
     game.moveDown();
   }
 
